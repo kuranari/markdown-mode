@@ -4957,6 +4957,79 @@ date = 2015-08-13 11:35:25 EST
 
 ;;; Movement tests:
 
+(ert-deftest test-markdown-movement/beginning-of-line ()
+  "Test beginning of line movement"
+  (markdown-test-string
+   "## Some text"
+   (goto-char (point-max))
+   (markdown-beginning-of-line)
+   (should (bolp)))
+
+  ;; With `visual-line-mode' active, move to beginning of visual line.
+  (markdown-test-string
+   "## Headline"
+   (visual-line-mode)
+   (dotimes (_ 1000) (insert "Text "))
+   (goto-char (point-max))
+   (markdown-beginning-of-line)
+   (should-not (bolp)))
+
+  (let ((markdown-hide-markup nil)
+        (markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "## Headline"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (bolp))))
+
+  (let ((markdown-hide-markup nil)
+        (markdown-special-ctrl-a/e t))
+    (markdown-test-string
+     "## Headline"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))
+     (markdown-beginning-of-line)
+     (should (bolp))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))))
+
+  ;; When markup is hidden, the cursor doesn't move from the beginning of title.
+  (let ((markdown-hide-markup t)
+        (markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "## Headline"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))))
+
+  (let ((markdown-hide-markup t)
+        (markdown-special-ctrl-a/e t))
+    (markdown-test-string
+     "## Headline"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))
+     (markdown-beginning-of-line)
+     (should (looking-at "Headline"))))
+
+  (let ((markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "- [ ] Item"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (bolp))))
+  (let ((markdown-special-ctrl-a/e t))
+    (markdown-test-string
+     "- [ ] Item"
+     (goto-char (point-max))
+     (markdown-beginning-of-line)
+     (should (looking-at "Item"))
+     (markdown-beginning-of-line)
+     (should (bolp)))))
+
 (ert-deftest test-markdown-movement/defun ()
   "Test defun navigation."
   (markdown-test-file "outline.text"

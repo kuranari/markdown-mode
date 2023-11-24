@@ -6529,9 +6529,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
       ;; At a header, special position is before the title.
       (let ((refpos (match-beginning 2)))
         (if (or (> origin refpos)
-                (<= origin (line-beginning-position))
-                ;; Prevents the cursor from moving to invisible characters
-                markdown-hide-markup)
+                (<= origin (line-beginning-position)))
             (goto-char refpos))))
      ((looking-at markdown-regex-list)
       ;; At a list item, special position is after the list marker or checkbox.
@@ -6540,7 +6538,14 @@ With argument N not nil or 1, move forward N - 1 lines first."
                 (<= origin (line-beginning-position)))
             (goto-char refpos))))
      ;; No special case, already at beginning of line.
-     (t nil))))
+     (t nil))
+
+    ;; Prevents the point from going to the previous line when heading symbols
+    ;; are hidden using the display property.
+    (when (and markdown-hide-markup
+               (equal (get-char-property (point) 'display) ""))
+      (goto-char (next-single-property-change (point) 'display)))
+    ))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
