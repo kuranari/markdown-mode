@@ -6547,6 +6547,38 @@ With argument N not nil or 1, move forward N - 1 lines first."
       (goto-char (next-single-property-change (point) 'display)))
     ))
 
+
+(defun markdown-end-of-line (&optional n)
+  "Go to the end of the line, but before ellipsis, if any.
+
+If this is a headline, and `org-special-ctrl-a/e' is not nil or
+symbol `reversed', ignore tags on the first attempt, and only
+move to after the tags when the cursor is already beyond the end
+of the headline.
+
+If `org-special-ctrl-a/e' is symbol `reversed' then ignore tags
+on the second attempt.
+
+With argument N not nil or 1, move forward N - 1 lines first."
+  (interactive "^p")
+  (let ((origin (point))
+	      (special markdown-special-ctrl-a/e)
+	      deactivate-mark)
+    ;; First move to a visible line.
+    (if (bound-and-true-p visual-line-mode)
+        (beginning-of-visual-line n)
+      (move-beginning-of-line n)
+      (forward-line 0))
+    (cond
+     ;; At a headline, with tags.
+     ((looking-at markdown-regex-header-atx)
+      (let ((refpos (match-end 2)))
+        (if (or (< origin refpos)
+                (<= origin (line-end-position)))
+            (goto-char refpos)
+          (move-end-of-line 1))))
+      (t (move-end-of-line 1)))))
+
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
 This is used to find the beginning of the defun and should behave
