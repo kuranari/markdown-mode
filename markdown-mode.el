@@ -659,6 +659,25 @@ markdown-header-face-* faces."
   :safe 'booleanp
   :package-version '(markdown-mode . "2.5"))
 
+(defcustom markdown-special-ctrl-a/e nil
+  "Non-nil means `C-a' and `C-e' behave specially in headlines and items.
+
+When t, `C-a' will bring back the cursor to the beginning of the
+headline text.  In an item, this will be the position after bullet and
+check-box, if any.  When the cursor is already at that position,
+another `C-a' will bring it to the beginning of the line.
+
+`C-e' will jump to the end of the headline, ignoring the presence
+of tags in the headline.  A second `C-e' will then jump to the
+true end of the line, after any tags.  This also means that, when
+this variable is non-nil, `C-e' also will never jump beyond the
+end of the heading of a folded section, i.e. not after the
+ellipses."
+  :group 'markdown
+  :type 'boolean
+  :safe 'booleanp
+  :package-version '(markdown-mode . "2.6"))
+
 
 ;;; Markdown-Specific `rx' Macro ==============================================
 
@@ -5531,6 +5550,9 @@ Assumes match data is available for `markdown-regex-italic'."
     (define-key map (kbd "C-x n s") 'markdown-narrow-to-subtree)
     (define-key map (kbd "M-RET") 'markdown-insert-list-item)
     (define-key map (kbd "C-c C-j") 'markdown-insert-list-item)
+    ;; Lines
+    (define-key map [remap move-beginning-of-line] 'markdown-beginning-of-line)
+    ;; (define-key map [remap move-end-of-line] 'markdown-end-of-line)
     ;; Paragraphs (Markdown context aware)
     (define-key map [remap backward-paragraph] 'markdown-backward-paragraph)
     (define-key map [remap forward-paragraph] 'markdown-forward-paragraph)
@@ -6473,6 +6495,52 @@ a list."
 
 
 ;;; Movement ==================================================================
+
+(defun markdown-beginning-of-line (&optional n)
+  "Go to the beginning of the current line.
+
+If this is a header or a list item, on the first attempt move to where the
+text starts, and only move to beginning of line when the cursor is already
+before the start of the text of the line.
+
+With argument N not nil or 1, move forward N - 1 lines first."
+  (interactive "^p")
+  (let ((origin (point))
+        (special markdown-special-ctrl-a/e)
+        deactivate-mark)
+    ;; First move to a visible line.
+    (if (bound-and-true-p visual-line-mode)
+        (beginning-of-visual-line n)
+      (move-beginning-of-line n)
+      ;; `move-beginning-of-line' may leave point after invisible
+      ;; characters if line starts with such of these (e.g., with
+      ;; a link at column 0).  Really move to the beginning of the
+      ;; current visible line.
+      (forward-line 0))
+    (cond
+     ;; No special behavior.  Point is already at the beginning of
+     ;; a line, logical or visual.
+     ((not special))
+     ;; `beginning-of-visual-line' left point before logical beginning
+     ;; of line: point is at the beginning of a visual line.  Bail
+     ;; out.
+     ((and (bound-and-true-p visual-line-mode) (not (bolp))))
+     ((looking-at markdown-regex-header-atx)
+      ;; At a header, special position is before the title.
+      (let ((refpos (match-beginning 2)))
+        (if (or (> origin refpos)
+                (<= origin (line-beginning-position))
+                ;; Prevents the cursor from moving to invisible characters
+                markdown-hide-markup)
+            (goto-char refpos))))
+     ((looking-at markdown-regex-list)
+      ;; At a list item, special position is after the list marker or checkbox.
+      (let ((refpos (or (match-end 4) (match-end 3))))
+        (if (or (> origin refpos)
+                (<= origin (line-beginning-position)))
+            (goto-char refpos))))
+     ;; No special case, already at beginning of line.
+     (t nil))))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
