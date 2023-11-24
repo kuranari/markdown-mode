@@ -6567,17 +6567,20 @@ With argument N not nil or 1, move forward N - 1 lines first."
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
         (beginning-of-visual-line n)
-      (move-beginning-of-line n)
-      (forward-line 0))
+      (move-beginning-of-line n))
     (cond
      ;; At a headline, with tags.
-     ((looking-at markdown-regex-header-atx)
+     ((save-excursion
+        (forward-line 0)
+        (looking-at markdown-regex-header-atx))
       (let ((refpos (match-end 2)))
-        (if (or (< origin refpos)
-                (<= origin (line-end-position)))
-            (goto-char refpos)
+        (if (or (< origin refpos) (>= origin (line-end-position)))
+            (if (bound-and-true-p visual-line-mode)
+                (let ((eovl (save-excursion (end-of-visual-line) (point))))
+                  (goto-char (min refpos eovl)))
+              (goto-char refpos))
           (move-end-of-line 1))))
-      (t (move-end-of-line 1)))))
+     (t (move-end-of-line 1)))))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
