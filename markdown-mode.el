@@ -6579,8 +6579,8 @@ With argument N not nil or 1, move forward N - 1 lines first."
                 (let ((eovl (save-excursion (end-of-visual-line) (point))))
                   (goto-char (min refpos eovl)))
               (goto-char refpos))
-          (move-end-of-line 1))))
-     (t (move-end-of-line 1)))))
+          (end-of-line))))
+     (t (end-of-line)))))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
