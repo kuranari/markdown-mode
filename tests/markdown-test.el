@@ -4960,7 +4960,7 @@ date = 2015-08-13 11:35:25 EST
 (ert-deftest test-markdown-movement/beginning-of-line ()
   "Test beginning of line movement"
   (markdown-test-string
-   "## Some text"
+   "Some text"
    (goto-char (point-max))
    (markdown-beginning-of-line)
    (should (bolp)))
@@ -5029,6 +5029,59 @@ date = 2015-08-13 11:35:25 EST
      (should (looking-at "Item"))
      (markdown-beginning-of-line)
      (should (bolp)))))
+
+(ert-deftest test-markdown-movement/end-of-line ()
+  "Test end of line movement"
+  (markdown-test-string
+   "Some text"
+   (markdown-end-of-line)
+   (should (eolp)))
+
+  ;; With `visual-line-mode' active, move to end of visual line.
+  ;; However, never go past ellipsis.
+  (markdown-test-string
+   "## Headline"
+   (visual-line-mode)
+   (dotimes (_ 1000) (insert "Text "))
+   (markdown-end-of-line)
+   (should-not (eolp)))
+
+  (let ((markdown-hide-markup nil)
+        (markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "## Headline ##"
+     (markdown-end-of-line)
+     (should (eolp))))
+
+  (let ((markdown-hide-markup nil)
+        (markdown-special-ctrl-a/e t))
+    (markdown-test-string
+     "## Headline ##"
+     (markdown-end-of-line)
+     (should (looking-at " ##"))
+     (markdown-end-of-line)
+     (should (eolp))
+     (markdown-end-of-line)
+     (should (looking-at " ##"))))
+
+  ;; When markup is hidden, the cursor doesn't move from the end of title.
+  (let ((markdown-hide-markup t)
+        (markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "## Headline ##"
+     (markdown-end-of-line)
+     (should (looking-at " ##"))
+     (markdown-end-of-line)
+     (should (looking-at " ##"))))
+
+  (let ((markdown-hide-markup t)
+        (markdown-special-ctrl-a/e t))
+    (markdown-test-string
+     "## Headline ##"
+     (markdown-end-of-line)
+     (should (looking-at " ##"))
+     (markdown-end-of-line)
+     (should (looking-at " ##")))))
 
 (ert-deftest test-markdown-movement/defun ()
   "Test defun navigation."

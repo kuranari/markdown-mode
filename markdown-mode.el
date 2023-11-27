@@ -6570,13 +6570,13 @@ With argument N not nil or 1, move forward N - 1 lines first."
       (move-beginning-of-line n))
     (cond
      ;; At a headline
-     ((and special
-           (save-excursion
-             (forward-line 0)
-             (looking-at markdown-regex-header-atx)))
+     ((save-excursion
+        (forward-line 0)
+        (looking-at markdown-regex-header-atx))
       (let ((refpos (match-end 2)))
-        (if (or (< origin refpos)
-                (>= origin (line-end-position))
+        (if (or (and special
+                     (or (< origin refpos)
+                         (>= origin (line-end-position))))
                 markdown-hide-markup)
             (if (bound-and-true-p visual-line-mode)
                 (let ((visual-end (save-excursion
