@@ -6566,23 +6566,34 @@ With argument N not nil or 1, move forward N - 1 lines first."
 	      deactivate-mark)
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
-        (end-of-visual-line n)
-      (end-of-line n))
-  (cond
-   ((not special))
-   ;; At a headline, with tags.
-   ((save-excursion
-      (forward-line 0)
-      (looking-at markdown-regex-header-atx))
-    (let ((refpos (match-end 2)))
-      (if (or (< origin refpos)
-              (>= origin (line-end-position))
-              markdown-hide-markup)
-          (if (bound-and-true-p visual-line-mode)
-              (goto-char (min (point) refpos))
-            (goto-char refpos))
-        (end-of-line))))
-   (t nil))))
+        (beginning-of-visual-line n)
+      (move-beginning-of-line n))
+    (cond
+     ;; At a headline
+     ((and special
+           (save-excursion
+             (forward-line 0)
+             (looking-at markdown-regex-header-atx)))
+      (let ((refpos (match-end 2)))
+        (if (or (< origin refpos)
+                (>= origin (line-end-position))
+                markdown-hide-markup)
+            (if (bound-and-true-p visual-line-mode)
+                (let ((visual-end (save-excursion
+                                    (end-of-visual-line)
+                                    (point))))
+                  (goto-char (min visual-end refpos)))
+              (goto-char refpos))
+          (end-of-line))))
+     ((bound-and-true-p visual-line-mode)
+      (let ((bol (line-beginning-position)))
+        (end-of-visual-line)
+        ;; If `end-of-visual-line' gets us past the ellipsis at the
+        ;; end of a line, backtrack and use `end-of-line' instead.
+        (when (/= bol (line-beginning-position))
+          (goto-char bol)
+          (end-of-line))))
+     (t (end-of-line)))))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
