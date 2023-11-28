@@ -6563,6 +6563,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
   (interactive "^p")
   (let ((origin (point))
 	      (special markdown-special-ctrl-a/e)
+        (disable-point-adjustment t)
 	      deactivate-mark)
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
@@ -6596,7 +6597,10 @@ With argument N not nil or 1, move forward N - 1 lines first."
         (when (/= bol (line-beginning-position))
           (goto-char bol)
           (end-of-line))))
-     (t (end-of-line)))))
+     (t (end-of-line))))
+  (when (and markdown-hide-markup
+             (equal (get-char-property (1- (point)) 'display) ""))
+    (goto-char (previous-single-property-change (1- (point)) 'display))))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
