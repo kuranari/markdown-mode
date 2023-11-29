@@ -6544,7 +6544,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
     ;; are hidden using the display property.
     (when (and markdown-hide-markup
                (equal (get-char-property (point) 'display) ""))
-      (goto-char (next-single-property-change (point) 'display)))
+      (setq disable-point-adjustment t))
     ))
 
 
@@ -6585,8 +6585,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
                     (<= origin visual-end))
                (goto-char visual-end))
               (t (if (or (< origin refpos)
-                         (>= origin (line-end-position))
-                         markdown-hide-markup)
+                         (>= origin (line-end-position)))
                      (goto-char refpos)
                    (end-of-line))))))
      ((bound-and-true-p visual-line-mode)
@@ -6599,8 +6598,8 @@ With argument N not nil or 1, move forward N - 1 lines first."
           (end-of-line))))
      (t (end-of-line))))
   (when (and markdown-hide-markup
-             (equal (get-char-property (1- (point)) 'display) ""))
-    (goto-char (previous-single-property-change (1- (point)) 'display))))
+             (equal (get-char-property (point) 'display) ""))
+    (setq disable-point-adjustment t)))
 
 (defun markdown-beginning-of-defun (&optional arg)
   "`beginning-of-defun-function' for Markdown.
