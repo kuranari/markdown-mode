@@ -6569,8 +6569,9 @@ With argument N not nil or 1, move forward N - 1 lines first."
      ;; No special case, already at beginning of line.
      (t nil))
 
-    ;; Prevents the point from going to the previous line when heading symbols
-    ;; are hidden using the display property.
+    ;; Hide headline markers using display property set to an empty string.
+    ;; Prevent automatic cursor movement caused by the command loop.
+    ;; Enable disable-point-adjustment to avoid unintended cursor repositioning.
     (when (and markdown-hide-markup
                (equal (get-char-property (point) 'display) ""))
       (setq disable-point-adjustment t))))
@@ -6635,6 +6636,9 @@ With argument N not nil or 1, move forward N - 1 lines first."
           (end-of-line))))
      (t (end-of-line))))
 
+  ;; Hide headline markers using display property set to an empty string.
+  ;; Prevent automatic cursor movement caused by the command loop.
+  ;; Enable disable-point-adjustment to avoid unintended cursor repositioning.
   (when (and markdown-hide-markup
              (equal (get-char-property (point) 'display) ""))
     (setq disable-point-adjustment t)))
