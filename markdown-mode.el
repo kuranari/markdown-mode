@@ -668,14 +668,33 @@ check-box, if any.  When the cursor is already at that position,
 another `C-a' will bring it to the beginning of the line.
 
 `C-e' will jump to the end of the headline, ignoring the presence
-of tags in the headline.  A second `C-e' will then jump to the
-true end of the line, after any tags.  This also means that, when
+of close tags in the headline.  A second `C-e' will then jump to the
+true end of the line, after close tags.  This also means that, when
 this variable is non-nil, `C-e' also will never jump beyond the
 end of the heading of a folded section, i.e. not after the
-ellipses."
+ellipses.
+
+When set to the symbol `reversed', the first `C-a' or `C-e' works
+normally, going to the true line boundary first.  Only a directly
+following, identical keypress will bring the cursor to the
+special positions.
+
+This may also be a cons cell where the behavior for `C-a' and
+`C-e' is set separately."
   :group 'markdown
-  :type 'boolean
-  :safe 'booleanp
+  :type '(choice
+	  (const :tag "off" nil)
+	  (const :tag "on: after hashes/bullet and before close tag first" t)
+	  (const :tag "reversed: true line boundary first" reversed)
+	  (cons :tag "Set C-a and C-e separately"
+		(choice :tag "Special C-a"
+			(const :tag "off" nil)
+			(const :tag "on: after hashes/bullet first" t)
+			(const :tag "reversed: before hashes/bullet first" reversed))
+		(choice :tag "Special C-e"
+			(const :tag "off" nil)
+			(const :tag "on: before close tag first" t)
+			(const :tag "reversed: after close tag first" reversed))))
   :package-version '(markdown-mode . "2.6"))
 
 
@@ -5552,7 +5571,7 @@ Assumes match data is available for `markdown-regex-italic'."
     (define-key map (kbd "C-c C-j") 'markdown-insert-list-item)
     ;; Lines
     (define-key map [remap move-beginning-of-line] 'markdown-beginning-of-line)
-    ;; (define-key map [remap move-end-of-line] 'markdown-end-of-line)
+    (define-key map [remap move-end-of-line] 'markdown-end-of-line)
     ;; Paragraphs (Markdown context aware)
     (define-key map [remap backward-paragraph] 'markdown-backward-paragraph)
     (define-key map [remap forward-paragraph] 'markdown-forward-paragraph)
@@ -6497,16 +6516,21 @@ a list."
 ;;; Movement ==================================================================
 
 (defun markdown-beginning-of-line (&optional n)
-  "Go to the beginning of the current line.
+  "Go to the beginning of the current visible line.
 
-If this is a header or a list item, on the first attempt move to where the
-text starts, and only move to beginning of line when the cursor is already
-before the start of the text of the line.
+If this is a headline, and `markdown-special-ctrl-a/e' is not nil
+or symbol `reversed', on the first attempt move to where the
+headline text hashes, and only move to beginning of line when the
+cursor is already before the hashes of the text of the headline.
+
+If `markdown-special-ctrl-a/e' is symbol `reversed' then go to
+the hashes of the text on the second attempt.
 
 With argument N not nil or 1, move forward N - 1 lines first."
   (interactive "^p")
   (let ((origin (point))
-        (special markdown-special-ctrl-a/e)
+	      (special (pcase markdown-special-ctrl-a/e
+		               (`(,C-a . ,_) C-a) (_ markdown-special-ctrl-a/e)))
         deactivate-mark)
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
@@ -6527,16 +6551,21 @@ With argument N not nil or 1, move forward N - 1 lines first."
      ((and (bound-and-true-p visual-line-mode) (not (bolp))))
      ((looking-at markdown-regex-header-atx)
       ;; At a header, special position is before the title.
-      (let ((refpos (match-beginning 2)))
-        (if (or (> origin refpos)
-                (<= origin (line-beginning-position)))
-            (goto-char refpos))))
+      (let ((refpos (match-beginning 2))
+            (bol (point)))
+	      (if (eq special 'reversed)
+	          (when (and (= origin bol) (eq last-command this-command))
+	            (goto-char refpos))
+	        (when (or (> origin refpos) (<= origin bol))
+	          (goto-char refpos)))))
      ((looking-at markdown-regex-list)
       ;; At a list item, special position is after the list marker or checkbox.
       (let ((refpos (or (match-end 4) (match-end 3))))
-        (if (or (> origin refpos)
-                (<= origin (line-beginning-position)))
-            (goto-char refpos))))
+	      (if (eq special 'reversed)
+	          (when (and (= (point) origin) (eq last-command this-command))
+	            (goto-char refpos))
+        (when (or (> origin refpos) (<= origin (line-beginning-position)))
+          (goto-char refpos)))))
      ;; No special case, already at beginning of line.
      (t nil))
 
@@ -6544,21 +6573,24 @@ With argument N not nil or 1, move forward N - 1 lines first."
     ;; are hidden using the display property.
     (when (and markdown-hide-markup
                (equal (get-char-property (point) 'display) ""))
-      (setq disable-point-adjustment t))
-    ))
+      (setq disable-point-adjustment t))))
 
 (defun markdown-end-of-line (&optional n)
   "Go to the end of the line, but before ellipsis, if any.
 
-If this is a headline, and `markdown-special-ctrl-a/e' is not
-nil, ignore close tags on the first attempt, and only move to
-after the close tags when the cursor is already beyond the end of
-the headline.
+If this is a headline, and `markdown-special-ctrl-a/e' is not nil
+or symbol `reversed', ignore close tag on the first attempt, and
+only move to after the close tag when the cursor is already
+beyond the end of the headline.
+
+If `markdown-special-ctrl-a/e' is symbol `reversed' then ignore
+close tag on the second attempt.
 
 With argument N not nil or 1, move forward N - 1 lines first."
   (interactive "^p")
   (let ((origin (point))
-	      (special markdown-special-ctrl-a/e)
+	      (special (pcase markdown-special-ctrl-a/e
+		               (`(,_ . ,C-e) C-e) (_ markdown-special-ctrl-a/e)))
 	      deactivate-mark)
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
@@ -6577,12 +6609,22 @@ With argument N not nil or 1, move forward N - 1 lines first."
                              (save-excursion
                                (end-of-visual-line)
                                (point)))))
-        (cond
-         ((and visual-end (< visual-end refpos) (<= origin visual-end))
-          (goto-char visual-end))
-         ((or (< origin refpos) (>= origin (line-end-position)))
-          (goto-char refpos))
-         (t (end-of-line)))))
+	      ;; If `end-of-visual-line' brings us before end of line or
+	      ;; even tags, i.e., the headline spans over multiple visual
+	      ;; lines, move there.
+        (cond ((and visual-end
+                    (< visual-end refpos)
+                    (<= origin visual-end))
+               (goto-char visual-end))
+	            ((eq special 'reversed)
+	             (if (and (= origin (line-end-position))
+			                  (eq this-command last-command))
+		               (goto-char refpos)
+		             (end-of-line)))
+              (t
+               (if (or (< origin refpos) (>= origin (line-end-position)))
+                   (goto-char refpos)
+                 (end-of-line))))))
      ((bound-and-true-p visual-line-mode)
       (let ((bol (line-beginning-position)))
         (end-of-visual-line)
@@ -6592,6 +6634,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
           (goto-char bol)
           (end-of-line))))
      (t (end-of-line))))
+
   (when (and markdown-hide-markup
              (equal (get-char-property (point) 'display) ""))
     (setq disable-point-adjustment t)))
