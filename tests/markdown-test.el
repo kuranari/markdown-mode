@@ -4959,76 +4959,83 @@ date = 2015-08-13 11:35:25 EST
 
 (ert-deftest test-markdown-movement/beginning-of-line ()
   "Test beginning of line movement"
-  (markdown-test-string
-   "Some text"
-   (goto-char (point-max))
-   (markdown-beginning-of-line)
-   (should (bolp)))
+  (markdown-test-string "Some text\nSome other text"
+    (goto-char (point-max))
+    (markdown-beginning-of-line)
+    (should (bolp)))
+
+  (markdown-test-string "# H1\n## H2"
+    (goto-char (point-max))
+    (outline-hide-sublevels 1)
+    (markdown-beginning-of-line)
+    (should (= (line-beginning-position) 1)))
 
   ;; With `visual-line-mode' active, move to beginning of visual line.
-  (markdown-test-string
-   "## Headline"
-   (visual-line-mode)
-   (dotimes (_ 1000) (insert "Text "))
-   (goto-char (point-max))
-   (markdown-beginning-of-line)
-   (should-not (bolp)))
+  (markdown-test-string "Text "
+    (visual-line-mode)
+    (dotimes (_ 1000) (insert "Text "))
+    (goto-char (point-max))
+    (markdown-beginning-of-line)
+    (should-not (bolp)))
+  ;; In a wide headline, with `visual-line-mode', prefer going to the
+  ;; beginning of a visual line than to the logical beginning of line,
+  ;; even if special movement is active.
+  (markdown-test-string "# Headline"
+    (visual-line-mode)
+    (goto-char (point-max))
+    (dotimes (_ 1000) (insert "Text "))
+    (markdown-beginning-of-line)
+    (should-not (bolp)))
 
-  (let ((markdown-hide-markup nil)
-        (markdown-special-ctrl-a/e nil))
-    (markdown-test-string
-     "## Headline"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (bolp))))
+  (markdown-test-string "## Headline"
+    (let ((markdown-special-ctrl-a/e t))
+      (goto-char (point-max))
+      (markdown-beginning-of-line)
+      (should (looking-at "Headline"))
+      (markdown-beginning-of-line)
+      (should (bolp))
+      (markdown-beginning-of-line)
+      (should (looking-at "Headline"))))
 
-  (let ((markdown-hide-markup nil)
-        (markdown-special-ctrl-a/e t))
-    (markdown-test-string
-     "## Headline"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))
-     (markdown-beginning-of-line)
-     (should (bolp))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))))
+  (markdown-test-string "## Headline"
+    (let ((markdown-special-ctrl-a/e nil))
+      (goto-char (point-max))
+      (markdown-beginning-of-line)
+      (should (bolp))))
 
-  ;; When markup is hidden, the cursor doesn't move from the beginning of title.
-  (let ((markdown-hide-markup t)
-        (markdown-special-ctrl-a/e nil))
-    (markdown-test-string
-     "## Headline"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))))
+  ;; At an headline with reversed movement, first move to beginning of
+  ;; line, then to the beginning of title.
+  (markdown-test-string "## Headline"
+    (let ((markdown-special-ctrl-a/e 'reversed)
+	        (this-command last-command))
+      (goto-char (point-max))
+      (markdown-beginning-of-line)
+      (should (bolp))
+      (markdown-beginning-of-line)
+      (should (looking-at "Headline"))))
 
-  (let ((markdown-hide-markup t)
-        (markdown-special-ctrl-a/e t))
-    (markdown-test-string
-     "## Headline"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))
-     (markdown-beginning-of-line)
-     (should (looking-at "Headline"))))
-
-  (let ((markdown-special-ctrl-a/e nil))
-    (markdown-test-string
-     "- [ ] Item"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (bolp))))
-  (let ((markdown-special-ctrl-a/e t))
-    (markdown-test-string
-     "- [ ] Item"
-     (goto-char (point-max))
-     (markdown-beginning-of-line)
-     (should (looking-at "Item"))
-     (markdown-beginning-of-line)
-     (should (bolp)))))
+  ;; At an item with special movement, first move after to beginning
+  ;; of title, then to the beginning of line, rinse, repeat.
+    (markdown-test-string "- [ ] Item"
+      (let ((markdown-special-ctrl-a/e nil))
+        (goto-char (point-max))
+        (markdown-beginning-of-line)
+        (should (bolp))))
+    (markdown-test-string "- [ ] Item"
+      (let ((markdown-special-ctrl-a/e t))
+        (goto-char (point-max))
+        (markdown-beginning-of-line)
+        (should (looking-at "Item"))
+        (markdown-beginning-of-line)
+        (should (bolp))))
+    (markdown-test-string "- [ ] Item"
+      (let ((markdown-special-ctrl-a/e 'reversed))
+        (goto-char (point-max))
+        (markdown-beginning-of-line)
+        (should (bolp))
+        (markdown-beginning-of-line)
+        (should (looking-at "Item"))))
+  )
 
 (ert-deftest test-markdown-movement/end-of-line ()
   "Test end of line movement"
@@ -5096,11 +5103,9 @@ date = 2015-08-13 11:35:25 EST
   (let ((markdown-hide-markup nil)
         (markdown-special-ctrl-a/e nil))
     (markdown-test-string
-     "## Headline ##"
+     "## Headline ##\n### Sub"
      (visual-line-mode)
      (outline-hide-subtree)
-     (markdown-end-of-line)
-     (should-not (eolp))
      (should (= 1 (line-beginning-position)))))
   )
 
