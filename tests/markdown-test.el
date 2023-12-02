@@ -5040,9 +5040,21 @@ date = 2015-08-13 11:35:25 EST
   ;; With `visual-line-mode' active, move to end of visual line.
   ;; However, never go past ellipsis.
   (markdown-test-string
-   "## Headline"
+   "Some Text"
    (visual-line-mode)
+   (goto-char (point-max))
    (dotimes (_ 1000) (insert "Text "))
+   (markdown-end-of-line)
+   (should-not (eolp)))
+
+  ;; In a wide headline, with `visual-line-mode', prefer going to end
+  ;; of visible line if tags, or end of line, are farther.
+  (markdown-test-string
+   "## Heading "
+   (visual-line-mode)
+   (goto-char (point-max))
+   (dotimes (_ 1000) (insert "Text "))
+   (goto-char (point-min))
    (markdown-end-of-line)
    (should-not (eolp)))
 
@@ -5070,9 +5082,7 @@ date = 2015-08-13 11:35:25 EST
     (markdown-test-string
      "## Headline ##"
      (markdown-end-of-line)
-     (should (looking-at " ##"))
-     (markdown-end-of-line)
-     (should (looking-at " ##"))))
+     (should (eolp))))
 
   (let ((markdown-hide-markup t)
         (markdown-special-ctrl-a/e t))
@@ -5081,7 +5091,18 @@ date = 2015-08-13 11:35:25 EST
      (markdown-end-of-line)
      (should (looking-at " ##"))
      (markdown-end-of-line)
-     (should (looking-at " ##")))))
+     (should (eolp))))
+
+  (let ((markdown-hide-markup nil)
+        (markdown-special-ctrl-a/e nil))
+    (markdown-test-string
+     "## Headline ##"
+     (visual-line-mode)
+     (outline-hide-subtree)
+     (markdown-end-of-line)
+     (should-not (eolp))
+     (should (= 1 (line-beginning-position)))))
+  )
 
 (ert-deftest test-markdown-movement/defun ()
   "Test defun navigation."

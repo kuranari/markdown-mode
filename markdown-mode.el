@@ -6547,47 +6547,42 @@ With argument N not nil or 1, move forward N - 1 lines first."
       (setq disable-point-adjustment t))
     ))
 
-
 (defun markdown-end-of-line (&optional n)
   "Go to the end of the line, but before ellipsis, if any.
 
-If this is a headline, and `org-special-ctrl-a/e' is not nil or
-symbol `reversed', ignore tags on the first attempt, and only
-move to after the tags when the cursor is already beyond the end
-of the headline.
-
-If `org-special-ctrl-a/e' is symbol `reversed' then ignore tags
-on the second attempt.
+If this is a headline, and `markdown-special-ctrl-a/e' is not
+nil, ignore close tags on the first attempt, and only move to
+after the close tags when the cursor is already beyond the end of
+the headline.
 
 With argument N not nil or 1, move forward N - 1 lines first."
   (interactive "^p")
   (let ((origin (point))
 	      (special markdown-special-ctrl-a/e)
-        (disable-point-adjustment t)
 	      deactivate-mark)
     ;; First move to a visible line.
     (if (bound-and-true-p visual-line-mode)
         (beginning-of-visual-line n)
       (move-beginning-of-line n))
     (cond
-     ;; At a headline
+     ;; At a headline, with close tag.
      ((and special
            (save-excursion
              (forward-line 0)
-             (looking-at markdown-regex-header-atx)))
+             (and
+              (looking-at markdown-regex-header-atx)
+              (match-end 3))))
       (let ((refpos (match-end 2))
             (visual-end (and (bound-and-true-p visual-line-mode)
                              (save-excursion
                                (end-of-visual-line)
                                (point)))))
-        (cond ((and visual-end
-                    (< visual-end refpos)
-                    (<= origin visual-end))
-               (goto-char visual-end))
-              (t (if (or (< origin refpos)
-                         (>= origin (line-end-position)))
-                     (goto-char refpos)
-                   (end-of-line))))))
+        (cond
+         ((and visual-end (< visual-end refpos) (<= origin visual-end))
+          (goto-char visual-end))
+         ((or (< origin refpos) (>= origin (line-end-position)))
+          (goto-char refpos))
+         (t (end-of-line)))))
      ((bound-and-true-p visual-line-mode)
       (let ((bol (line-beginning-position)))
         (end-of-visual-line)
