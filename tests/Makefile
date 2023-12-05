@@ -13,7 +13,8 @@ TEST_HTML = $(TEST_SRCS:.text=.html)
 test: compile-all checkdoc
 	$(EMACS) -Q --batch \
 	    -l ert -l ../markdown-mode.elc -l markdown-test.elc \
-	    --eval '(ert-run-tests-batch-and-exit $(SELECTOR))'
+	    --eval '(let ((ert-batch-backtrace-right-margin 180)) \
+	    (ert-run-tests-batch-and-exit $(SELECTOR)))'
 
 checkdoc:
 	$(EMACS) -Q --batch -l checkdoc-batch.el 2>&1 | \

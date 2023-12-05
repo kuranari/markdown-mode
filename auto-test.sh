@@ -1,11 +1,13 @@
 #!/bin/zsh
 
 # 監視するファイルのパス
-FILE_PATH="tests/markdown-test.el"
+FILES=("tests/markdown-test.el" "markdown-mode.el")
+
 
 # ファイル変更を監視し、変更があった場合に `make test` を実行
-fswatch -o "$FILE_PATH" | while read num; do
+fswatch -o "${FILES[@]}" | while read num; do
     make test SELECTOR='"test-markdown-movement/beginning-of-line"'
+    # make test SELECTOR='"test-markdown-movement/end-of-line"'
 
     # 直前の終了ステータスに基づいて通知を表示
     if [ $? -eq 0 ]; then
